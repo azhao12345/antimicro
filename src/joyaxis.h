@@ -44,6 +44,7 @@ public:
         PositiveHalfThrottle = 2
     };
 
+    void polledEvent();
     void joyEvent(int value, bool ignoresets=false, bool updateLastValues=true);
     void queuePendingEvent(int value, bool ignoresets=false, bool updateLastValues=true);
     void activatePendingEvent();
@@ -191,6 +192,8 @@ protected:
     bool pendingIgnoreSets;
     // TODO: CHECK IF PROPERTY IS NEEDED.
     //bool pendingUpdateLastValues;
+
+    int pollCount;
 
 signals:
     void active(int value);

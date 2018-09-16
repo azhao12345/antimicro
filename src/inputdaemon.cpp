@@ -149,6 +149,8 @@ void InputDaemon::run ()
 
 void InputDaemon::refreshJoysticks()
 {
+    Logger::LogInfo("slorggg");
+
     QMapIterator<SDL_JoystickID, InputDevice*> iter(*joysticks);
 
     while (iter.hasNext())
@@ -163,6 +165,7 @@ void InputDaemon::refreshJoysticks()
 
     joysticks->clear();
 #ifdef USE_SDL_2
+    Logger::LogInfo("usin sdl 2");
     trackjoysticks.clear();
     trackcontrollers.clear();
 
@@ -174,6 +177,7 @@ void InputDaemon::refreshJoysticks()
     {
 #ifdef USE_SDL_2
 #ifdef USE_NEW_REFRESH
+        Logger::LogInfo("usin new refresh");
         int index = i;
 
         // Check if device is considered a Game Controller at the start.
@@ -1025,6 +1029,21 @@ void InputDaemon::secondInputPass(QQueue<SDL_Event> *sdlEventQueue)
 {
     QHash<SDL_JoystickID, InputDevice*> activeDevices;
 
+    //joysticks
+    for (QMap<int, InputDevice*>::iterator i = joysticks->begin(); i != joysticks->end(); ++i)
+    {
+        InputDevice *joy = i.value();
+        if (joy)
+        {
+            SetJoystick* set = joy->getActiveSetJoystick();
+            for (int axesIndex = 0; axesIndex < set->getNumberAxes(); axesIndex++)
+            {
+                JoyAxis *axis = set->getJoyAxis(axesIndex);
+                axis->polledEvent();
+            }
+        }
+    }
+
     while (!sdlEventQueue->isEmpty())
     {
         SDL_Event event = sdlEventQueue->dequeue();
@@ -1234,6 +1253,8 @@ void InputDaemon::secondInputPass(QQueue<SDL_Event> *sdlEventQueue)
             JoyButton::invokeMouseEvents();
         }
     }
+
+
 }
 
 void InputDaemon::clearBitArrayStatusInstances()
@@ -1270,6 +1291,8 @@ void InputDaemon::resetActiveButtonMouseDistances()
     pollResetTimer.stop();
 
     JoyButton::resetActiveButtonMouseDistances();
+
+    run();
 }
 
 void InputDaemon::updatePollResetRate(unsigned int tempPollRate)

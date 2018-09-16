@@ -50,11 +50,29 @@ JoyAxis::JoyAxis(int index, int originset, SetJoystick *parentSet,
 
     reset();
     this->index = index;
+
+    pollCount = 0;
 }
 
 JoyAxis::~JoyAxis()
 {
     reset();
+}
+
+void JoyAxis::polledEvent()
+{
+    pollCount += 1;
+    if (pollCount > 4) {
+        pollCount = 0;
+        if (activeButton)
+        {
+            isActive = eventActive = false;
+            emit released(0);
+            // Currently in deadzone. Disable currently active button.
+            activeButton->joyEvent(eventActive, false);
+            activeButton = 0;
+        }
+    }
 }
 
 void JoyAxis::queuePendingEvent(int value, bool ignoresets, bool updateLastValues)
@@ -106,6 +124,7 @@ void JoyAxis::stickPassEvent(int value, bool ignoresets, bool updateLastValues)
 {
     if (this->stick)
     {
+
         if (updateLastValues)
         {
             lastKnownThottledValue = currentThrottledValue;
@@ -114,9 +133,11 @@ void JoyAxis::stickPassEvent(int value, bool ignoresets, bool updateLastValues)
 
         setCurrentRawValue(value);
         //currentRawValue = value;
-        bool safezone = !inDeadZone(currentRawValue);
+        //bool safezone = !inDeadZone(currentRawValue);
+        //bool safezone = (currentRawValue != lastKnownRawValue);
         currentThrottledValue = calculateThrottledValue(value);
 
+        bool safezone = (currentRawValue != lastKnownRawValue);
         if (safezone && !isActive)
         {
             isActive = eventActive = true;
@@ -138,6 +159,7 @@ void JoyAxis::stickPassEvent(int value, bool ignoresets, bool updateLastValues)
         }
 
         emit moved(currentRawValue);
+
     }
 }
 
@@ -157,9 +179,10 @@ void JoyAxis::joyEvent(int value, bool ignoresets, bool updateLastValues)
 
         setCurrentRawValue(value);
         //currentRawValue = value;
-        bool safezone = !inDeadZone(currentRawValue);
+        //bool safezone = !inDeadZone(currentRawValue);
         currentThrottledValue = calculateThrottledValue(value);
 
+        bool safezone = (currentRawValue != lastKnownRawValue);
         // If in joystick mode and this is the first detected event,
         // use the current value as the axis center point. If the value
         // is below -30,000 then consider it a trigger.
@@ -311,13 +334,39 @@ int JoyAxis::getIndex()
 
 void JoyAxis::createDeskEvent(bool ignoresets)
 {
+    pollCount = 0;
     JoyAxisButton *eventbutton = 0;
+
+    /*
     if (currentThrottledValue > deadZone)
     {
         eventbutton = paxisbutton;
     }
     else if (currentThrottledValue < -deadZone)
     {
+        eventbutton = naxisbutton;
+    }
+    */
+
+    // calculate wrapping
+    int wrappedLastValue = 0;
+    if (currentRawValue > 0) {
+        wrappedLastValue = lastKnownRawValue + AXISMAX - AXISMIN;
+    } else {
+        wrappedLastValue = lastKnownRawValue - AXISMAX + AXISMIN;
+    }
+
+    // check which one is closer
+    int actualLastValue = 0;
+    if (abs(currentRawValue - wrappedLastValue) > abs(currentRawValue - lastKnownRawValue)) {
+        actualLastValue = lastKnownRawValue;
+    } else {
+        actualLastValue = wrappedLastValue;
+    }
+
+    if (currentRawValue > actualLastValue) {
+        eventbutton = paxisbutton;
+    } else if (currentRawValue < actualLastValue) {
         eventbutton = naxisbutton;
     }
 
